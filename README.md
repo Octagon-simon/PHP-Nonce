@@ -73,4 +73,4 @@ Open test.php contained in this folder in a local server and submit the form
 
 ### Learn More
 
-Want to know how I built this simple Nonce? [Check out my blog at medium]()
+Want to know how I built this simple Nonce? [Check out the article at medium](https://simon-ugorji.medium.com/how-to-create-a-simple-nonce-in-php-a5afe046beee)
