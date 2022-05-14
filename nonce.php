@@ -1,5 +1,9 @@
 <?php
 
+session_start();
+
+define('NONCE_SECRET', 'CEIUHET745T$^&%&%^gFGBF$^');
+
 class Nonce {
 	/**
 	 * Generate a Nonce. 
@@ -51,46 +55,78 @@ class Nonce {
         //return the result
         return $output;
     }
+    //store Nonce
+    private function storeNonce($form_id, $nonce){
+        //Argument must be a string
+        if (is_string($form_id) == false) {
+            throw new InvalidArgumentException("A valid Form ID is required");
+        }
+        //group Generated Nonces and store with md5 Hash
+        $_SESSION['nonce'][$form_id] = md5($nonce);
+        return true;
+    }
     //hash tokens and return nonce
-    public function generateNonce($length, $form_id, $expiry_time){
+    public function generateNonce($length = 10, $form_id, $expiry_time){
+        //our secret
+        $secret = NONCE_SECRET;
+
+        //secret must be valid. You can add your regExp here
+        if (is_string($secret) == false || strlen($secret) < 10) {
+            throw new InvalidArgumentException("A valid Nonce Secret is required");
+        }
         //generate our salt
         $salt = self::generateSalt($length);
-        //hash the form id
-        $form = $form_id;
-        //set the time in seconds
+        //convert the time to seconds
         $time = time() + (60 * intval($expiry_time));
-        //generate a token to hash
-        $toHash = $salt.$form.$time;
-        //send this to the user
-        $nonce = $salt .':'.$form.':'.$time.':'.hash('sha256', $toHash);
-
+        //concatenate tokens to hash
+        $toHash = $secret.$salt.$time;
+        //send this to the user with the hashed tokens
+        $nonce = $salt .':'.$form_id.':'.$time.':'.hash('sha256', $toHash);
+        //store Nonce
+        self::storeNonce($form_id, $nonce);
+        //return nonce
         return $nonce;
     }
-    //verify nonce
     public function verifyNonce($nonce){
+        //our secret
+        $secret = NONCE_SECRET;
         //split the nonce using our delimeter : and check if the count equals 4
         $split = explode(':', $nonce);
         if(count($split) !== 4){
             return false;
         }
+
         //reassign variables
         $salt = $split[0];
-        $form = $split[1];
+        $form_id = $split[1];
         $time = intval($split[2]);
         $oldHash = $split[3];
         //check if the time has expired
         if(time() > $time){
             return false;
         }
+
+        /* Nonce is proving to be valid, continue ... */
+
+        //check if nonce is present in the session
+        if(isset($_SESSION['nonce'][$form_id])){
+            //check if hashed value matches
+            if($_SESSION['nonce'][$form_id] !== md5($nonce)){
+                return false;
+            }
+        }else{
+             return false;
+        }
+
         //check if the nonce is valid by rehashing and matching it with the $oldHash
-        $toHash = $salt.$form.$time;
+        $toHash = $secret.$salt.$time;
         $reHashed = hash('sha256', $toHash);
         //match with the token
         if($reHashed !== $oldHash){
             return false;
         }
+        /* Wonderful, Nonce has proven to be valid*/
         return true;
     }
 }
-
 ?>
